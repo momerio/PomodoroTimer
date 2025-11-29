@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer(β)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Pomodoro Timer(β)</h1>
+            <div class="header-controls">
+                <a href="https://sample.sample" target="_blank" rel="noopener noreferrer" class="icon-btn"
+                    aria-label="GitHubリポジトリ">
+                    <i class="fab fa-github"></i>
+                </a>
+                <button id="theme-toggle" class="icon-btn" aria-label="テーマ切り替え">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <section class="timer-section">
+                <div class="mode-selector">
+                    <button data-mode="work" class="mode-btn active">作業</button>
+                    <button data-mode="shortBreak" class="mode-btn">小休憩</button>
+                    <button data-mode="longBreak" class="mode-btn">大休憩</button>
+                </div>
+
+                <div class="timer-display">
+                    <span id="time">25:00</span>
+                </div>
+
+                <div class="timer-controls">
+                    <button id="start-pause-btn" class="primary-btn">開始</button>
+                    <button id="reset-btn" class="secondary-btn">リセット</button>
+                </div>
+            </section>
+
+            <section class="task-section">
+                <div class="input-group">
+                    <input type="text" id="task-input" placeholder="現在の作業内容は？">
+                </div>
+                <div class="cycle-count">
+                    <span>完了サイクル: <span id="cycle-count">0</span></span>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <button id="settings-toggle" class="text-btn">設定 <i class="fas fa-chevron-down"></i></button>
+                <div id="settings-panel" class="settings-panel hidden">
+                    <div class="setting-item">
+                        <label>作業時間</label>
+                        <div class="time-inputs">
+                            <input type="number" id="work-duration-min" value="25" min="0" max="60"> 分
+                            <input type="number" id="work-duration-sec" value="0" min="0" max="59"> 秒
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label>小休憩</label>
+                        <div class="time-inputs">
+                            <input type="number" id="short-break-duration-min" value="5" min="0" max="30"> 分
+                            <input type="number" id="short-break-duration-sec" value="0" min="0" max="59"> 秒
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label>大休憩</label>
+                        <div class="time-inputs">
+                            <input type="number" id="long-break-duration-min" value="15" min="0" max="60"> 分
+                            <input type="number" id="long-break-duration-sec" value="0" min="0" max="59"> 秒
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label>大休憩までのサイクル</label>
+                        <input type="number" id="long-break-interval" value="4" min="1" max="10">
+                    </div>
+                    <div class="setting-item setting-item-checkbox">
+                        <label>
+                            <input type="checkbox" id="auto-start" checked>
+                            自動開始
+                        </label>
+                    </div>
+                    <div class="setting-item setting-item-checkbox">
+                        <label>
+                            <input type="checkbox" id="notification-sound" checked>
+                            通知音
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="log-section">
+                <h3>作業ログ</h3>
+                <ul id="log-list">
+                    <!-- Logs will be added here -->
+                </ul>
+                <div class="log-controls">
+                    <button id="download-log-btn" class="text-btn">CSV出力</button>
+                    <button id="clear-log-btn" class="text-btn danger">ログを消去</button>
+                </div>
+            </section>
+
+            <footer>
+                <p>&copy; <span id="copyright-year"></span> momerio</p>
+                <p class="ai-note">※ このアプリケーションのプログラムの一部は生成AIを利用して作成しています</p>
+                <p><a href="#" id="privacy-policy-link" class="privacy-link">プライバシーポリシー</a></p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notification-toast" class="notification-toast hidden">
+        <div class="notification-content">
+            <i class="fas fa-check-circle"></i>
+            <span id="notification-message"></span>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacy-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>プライバシーポリシー</h2>
+                <button id="close-privacy-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>1. 収集する情報</h3>
+                <p>本アプリケーションは、以下の情報をお使いのブラウザのローカルストレージに保存します：</p>
+                <ul>
+                    <li>タイマー設定（作業時間、休憩時間、サイクル数など）</li>
+                    <li>作業ログ（タスク名、完了時刻、作業時間）</li>
+                    <li>アプリケーション設定（テーマ、通知音、自動開始設定）</li>
+                </ul>
+
+                <h3>2. 情報の使用目的</h3>
+                <p>収集した情報は、アプリケーションの機能を提供するためにのみ使用されます。</p>
+
+                <h3>3. 情報の保存場所</h3>
+                <p>すべての情報はお使いのブラウザのローカルストレージに保存されます。外部サーバーへのデータ送信は一切行いません。</p>
+
+                <h3>4. 第三者への提供</h3>
+                <p>本アプリケーションは、ユーザーの情報を第三者に提供、開示することはありません。</p>
+
+                <h3>5. プライバシーポリシーの変更</h3>
+                <p>本プライバシーポリシーは、必要に応じて変更される場合があります。変更後のプライバシーポリシーは、本ページに掲載された時点で効力を生じるものとします。</p>
+
+                <h3>6. 生成AIの使用について</h3>
+                <p>本アプリケーションのプログラムの一部は、生成AIを利用して作成されています。</p>
+
+                <h3>7. 免責事項</h3>
+                <p>本アプリケーションはベータ版であり、動作の保証はいたしません。本アプリケーションの使用により生じた不具合や損害について、開発者は一切の責任を負いません。</p>
+
+                <h3>8. お問い合わせ</h3>
+                <p>本プライバシーポリシーに関するお問い合わせは、開発者までご連絡ください。</p>
+
+                <p class="update-date">最終更新日: 2025年11月30日</p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
