@@ -137,6 +137,16 @@ function init() {
             }
         });
     }
+
+    // Editable Timer & Cycle Count
+    if (timerDisplay) {
+        timerDisplay.classList.add('editable-cursor');
+        timerDisplay.addEventListener('dblclick', makeTimerEditable);
+    }
+    if (cycleCountDisplay) {
+        cycleCountDisplay.classList.add('editable-cursor');
+        cycleCountDisplay.addEventListener('dblclick', makeCycleEditable);
+    }
 }
 
 function loadData() {
@@ -284,7 +294,7 @@ function handleTimerComplete() {
         showNotification('作業時間が終了しました！');
         cycleCount++;
         cycleCountDisplay.textContent = cycleCount;
-        logWork();
+        logSession('作業');
 
         if (cycleCount % settings.longBreakInterval === 0) {
             switchMode('longBreak');
@@ -293,6 +303,8 @@ function handleTimerComplete() {
         }
     } else {
         showNotification('休憩時間が終了しました！');
+        const breakName = currentMode === 'shortBreak' ? '小休憩' : '大休憩';
+        logSession('休憩', breakName);
         switchMode('work');
     }
 
@@ -358,15 +370,33 @@ function updateDisplay() {
     document.title = `${timerDisplay.textContent} - Pomodoro Timer`;
 }
 
-function logWork() {
-    const taskName = taskInput.value.trim() || '名無しのタスク';
-    const durationMin = Math.floor(settings.work / 60);
-    const durationSec = settings.work % 60;
+function logSession(genre, taskNameOverride = null) {
+    let taskName = taskNameOverride;
+    if (!taskName) {
+        taskName = taskInput.value.trim() || '名無しのタスク';
+    }
+
+    let durationMin, durationSec;
+    // Determine duration based on genre/mode
+    if (genre === '作業') {
+        durationMin = Math.floor(settings.work / 60);
+        durationSec = settings.work % 60;
+    } else {
+        if (taskName === '小休憩') {
+            durationMin = Math.floor(settings.shortBreak / 60);
+            durationSec = settings.shortBreak % 60;
+        } else {
+            durationMin = Math.floor(settings.longBreak / 60);
+            durationSec = settings.longBreak % 60;
+        }
+    }
+
     const durationStr = durationSec > 0 ? `${durationMin}分${durationSec}秒` : `${durationMin}分`;
 
     const logEntry = {
+        genre: genre,
         task: taskName,
-        time: new Date().toLocaleString('ja-JP'), // Changed to store full Date and Time
+        time: new Date().toLocaleString('ja-JP'),
         duration: durationStr
     };
 
@@ -412,16 +442,14 @@ function downloadCSV() {
         return;
     }
 
-    // Header: No, タスク, 実行時間, 日時
-    let csvContent = "No,タスク,実行時間,日時\n";
+    // Header: No,ジャンル,タスク,実行時間,日時
+    let csvContent = "No,ジャンル,タスク,実行時間,日時\n";
 
     // Rows
     logs.forEach((log, index) => {
-        // Logs are stored Newest first.
-        // We will output them in the order they are stored (Newest = No.1)
-        // or simplistic row counting.
         const row = [
             index + 1,
+            escapeCSV(log.genre || '作業'),
             escapeCSV(log.task),
             escapeCSV(log.duration),
             escapeCSV(log.time)
@@ -476,6 +504,77 @@ function toggleTheme() {
         icon.classList.add('fa-sun');
         localStorage.setItem('pomodoroTheme', 'dark');
     }
+}
+
+// Editable Functions
+function makeTimerEditable() {
+    if (timerState === 'running') return;
+
+    const currentText = timerDisplay.textContent;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentText;
+    input.className = 'timer-input';
+    input.maxLength = 5;
+    input.placeholder = "MM:SS";
+
+    const finishEdit = () => {
+        const val = input.value;
+        const match = val.match(/^(\d{1,2}):(\d{2})$/);
+        if (match) {
+            const min = parseInt(match[1]);
+            const sec = parseInt(match[2]);
+            if (sec < 60) {
+                timeLeft = (min * 60) + sec;
+            }
+        }
+
+        if (input.parentNode) {
+            input.replaceWith(timerDisplay);
+        }
+        updateDisplay();
+    };
+
+    input.addEventListener('blur', finishEdit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            input.blur();
+        }
+    });
+
+    timerDisplay.replaceWith(input);
+    input.focus();
+}
+
+function makeCycleEditable() {
+    const currentCount = cycleCountDisplay.textContent;
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = currentCount;
+    input.className = 'cycle-input';
+    input.min = 0;
+
+    const finishEdit = () => {
+        const val = parseInt(input.value);
+        if (!isNaN(val) && val >= 0) {
+            cycleCount = val;
+        }
+
+        if (input.parentNode) {
+            input.replaceWith(cycleCountDisplay);
+        }
+        cycleCountDisplay.textContent = cycleCount;
+    };
+
+    input.addEventListener('blur', finishEdit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            input.blur();
+        }
+    });
+
+    cycleCountDisplay.replaceWith(input);
+    input.focus();
 }
 
 // Set copyright year
