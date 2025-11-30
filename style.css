@@ -497,6 +497,7 @@ footer p {
 
 .close-btn:hover {
     background-color: rgba(0, 0, 0, 0.1);
+    cursor: pointer;
 }
 
 .modal-body {

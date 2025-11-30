@@ -54,13 +54,13 @@ function init() {
         loadData();
     } catch (e) {
         console.error('Failed to load data:', e);
-        // Reset settings if load fails
         settings = {
             work: 25 * 60,
             shortBreak: 5 * 60,
             longBreak: 15 * 60,
             longBreakInterval: 4,
-            autoStart: true
+            autoStart: true,
+            notificationSound: true
         };
     }
 
@@ -154,7 +154,6 @@ function loadData() {
         const savedSettings = localStorage.getItem('pomodoroSettings');
         if (savedSettings) {
             settings = JSON.parse(savedSettings);
-            // Ensure settings are valid numbers
             if (isNaN(settings.work)) settings.work = 25 * 60;
             if (isNaN(settings.shortBreak)) settings.shortBreak = 5 * 60;
             if (isNaN(settings.longBreak)) settings.longBreak = 15 * 60;
@@ -260,7 +259,6 @@ function resetTimer() {
     timerState = 'stopped';
     startPauseBtn.textContent = '開始';
 
-    // Set time based on current mode
     if (currentMode === 'work') timeLeft = settings.work;
     else if (currentMode === 'shortBreak') timeLeft = settings.shortBreak;
     else if (currentMode === 'longBreak') timeLeft = settings.longBreak;
@@ -271,13 +269,11 @@ function resetTimer() {
 function switchMode(mode) {
     currentMode = mode;
 
-    // Update UI
     modeButtons.forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.mode === mode) btn.classList.add('active');
     });
 
-    // Update Body Background Color
     const body = document.body;
     if (mode === 'work') body.style.backgroundColor = 'var(--primary-color)';
     else if (mode === 'shortBreak') body.style.backgroundColor = 'var(--secondary-color)';
@@ -289,7 +285,6 @@ function switchMode(mode) {
 function handleTimerComplete() {
     pauseTimer();
 
-    // Show custom notification instead of alert
     if (currentMode === 'work') {
         showNotification('作業時間が終了しました！');
         cycleCount++;
@@ -308,7 +303,6 @@ function handleTimerComplete() {
         switchMode('work');
     }
 
-    // Auto-start next cycle if enabled
     if (settings.autoStart) {
         startTimer();
     } else {
@@ -316,18 +310,15 @@ function handleTimerComplete() {
     }
 }
 
-// Notification functions
 function showNotification(message) {
     if (notificationMessage) notificationMessage.textContent = message;
     if (notificationToast) {
         notificationToast.classList.remove('hidden', 'fade-out');
 
-        // Play notification sound if enabled
         if (settings.notificationSound) {
             playNotificationSound();
         }
 
-        // Auto-hide after 3 seconds
         setTimeout(() => {
             if (notificationToast) {
                 notificationToast.classList.add('fade-out');
@@ -340,7 +331,6 @@ function showNotification(message) {
 }
 
 function playNotificationSound() {
-    // Create a pleasant notification sound using Web Audio API
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -348,11 +338,9 @@ function playNotificationSound() {
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    // Configure sound - pleasant chime
-    oscillator.frequency.value = 800; // Hz
+    oscillator.frequency.value = 800;
     oscillator.type = 'sine';
 
-    // Envelope for smooth sound
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
     gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
@@ -365,8 +353,6 @@ function updateDisplay() {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
     timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-    // Update title
     document.title = `${timerDisplay.textContent} - Pomodoro Timer`;
 }
 
@@ -377,7 +363,6 @@ function logSession(genre, taskNameOverride = null) {
     }
 
     let durationMin, durationSec;
-    // Determine duration based on genre/mode
     if (genre === '作業') {
         durationMin = Math.floor(settings.work / 60);
         durationSec = settings.work % 60;
@@ -407,15 +392,91 @@ function logSession(genre, taskNameOverride = null) {
 
 function renderLogs() {
     logList.innerHTML = '';
-    logs.forEach(log => {
+    logs.forEach((log, index) => {
         const li = document.createElement('li');
         li.className = 'log-item';
-        li.innerHTML = `
-            <span>${log.task}</span>
-            <span>${log.duration} - ${log.time}</span>
-        `;
+
+        const taskSpan = document.createElement('span');
+        taskSpan.textContent = log.task;
+        taskSpan.title = "ダブルクリックで編集";
+        taskSpan.addEventListener('dblclick', () => makeLogTaskEditable(index, taskSpan));
+
+        const metaSpan = document.createElement('span');
+
+        const durSpan = document.createElement('span');
+        durSpan.textContent = log.duration;
+        durSpan.title = "ダブルクリックで時間を編集";
+        durSpan.style.marginRight = "5px";
+        durSpan.addEventListener('dblclick', () => makeLogDurationEditable(index, durSpan));
+
+        const timeSpan = document.createElement('span');
+        timeSpan.textContent = ` - ${log.time}`;
+
+        metaSpan.appendChild(durSpan);
+        metaSpan.appendChild(timeSpan);
+
+        li.appendChild(taskSpan);
+        li.appendChild(metaSpan);
+
         logList.appendChild(li);
     });
+}
+
+function makeLogTaskEditable(index, element) {
+    const currentText = logs[index].task;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentText;
+    input.className = 'log-input';
+    input.style.width = '150px';
+
+    const finishEdit = () => {
+        const val = input.value.trim();
+        if (val) {
+            logs[index].task = val;
+            saveData();
+        }
+        renderLogs();
+    };
+
+    input.addEventListener('blur', finishEdit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            input.blur();
+        }
+    });
+
+    element.replaceWith(input);
+    input.focus();
+}
+
+function makeLogDurationEditable(index, element) {
+    const currentText = logs[index].duration;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentText;
+    input.className = 'log-input';
+    input.style.width = '80px';
+    input.placeholder = "X分Y秒";
+
+    const finishEdit = () => {
+        const val = input.value.trim();
+        if (val) {
+            logs[index].duration = val;
+            saveData();
+        }
+        renderLogs();
+    };
+
+    input.addEventListener('blur', finishEdit);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            input.blur();
+        }
+    });
+
+    element.replaceWith(input);
+    input.focus();
 }
 
 function clearLogs() {
@@ -426,7 +487,6 @@ function clearLogs() {
     }
 }
 
-// CSV Download Helper
 function escapeCSV(str) {
     if (str == null) return "";
     str = String(str);
@@ -442,10 +502,8 @@ function downloadCSV() {
         return;
     }
 
-    // Header: No,ジャンル,タスク,実行時間,日時
     let csvContent = "No,ジャンル,タスク,実行時間,日時\n";
 
-    // Rows
     logs.forEach((log, index) => {
         const row = [
             index + 1,
@@ -457,7 +515,6 @@ function downloadCSV() {
         csvContent += row.join(",") + "\n";
     });
 
-    // Add BOM for Japanese characters in Excel
     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
     const blob = new Blob([bom, csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -506,7 +563,6 @@ function toggleTheme() {
     }
 }
 
-// Editable Functions
 function makeTimerEditable() {
     if (timerState === 'running') return;
 
@@ -577,7 +633,6 @@ function makeCycleEditable() {
     input.focus();
 }
 
-// Set copyright year
 document.addEventListener('DOMContentLoaded', () => {
     const copyrightYear = document.getElementById('copyright-year');
     if (copyrightYear) {
