@@ -94,6 +94,16 @@
                             通知音
                         </label>
                     </div>
+                    <div class="setting-item setting-item-checkbox">
+                        <label>
+                            <input type="checkbox" id="brown-noise-toggle">
+                            ブラウンノイズ
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label>ノイズ音量</label>
+                        <input type="range" id="brown-noise-volume" min="0" max="1" step="0.01" value="0.5">
+                    </div>
                 </div>
             </section>
 
@@ -109,7 +119,7 @@
             </section>
 
             <footer>
-                <p>&copy; <span id="copyright-year"></span> momerio</p>
+                <p>&copy; 2025-<span id="copyright-year"></span> momerio</p>
                 <p class="ai-note">※ このアプリケーションのプログラムの一部は生成AIを利用して作成しています</p>
                 <p><a href="#" id="privacy-policy-link" class="privacy-link">プライバシーポリシー</a></p>
             </footer>

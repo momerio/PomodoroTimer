@@ -21,6 +21,8 @@ const longBreakDurationSecInput = document.getElementById('long-break-duration-s
 const longBreakIntervalInput = document.getElementById('long-break-interval');
 const autoStartInput = document.getElementById('auto-start');
 const notificationSoundInput = document.getElementById('notification-sound');
+const brownNoiseToggleInput = document.getElementById('brown-noise-toggle');
+const brownNoiseVolumeInput = document.getElementById('brown-noise-volume');
 
 // Notification elements
 const notificationToast = document.getElementById('notification-toast');
@@ -43,10 +45,73 @@ let settings = {
     longBreak: 15 * 60,
     longBreakInterval: 4,
     autoStart: true,
-    notificationSound: true
+    notificationSound: true,
+    brownNoise: false,
+    brownNoiseVolume: 0.5
 };
 
 let logs = [];
+
+class BrownNoiseManager {
+    constructor() {
+        this.audioContext = null;
+        this.source = null;
+        this.gainNode = null;
+        this.buffer = null;
+        this.isPlaying = false;
+    }
+
+    init() {
+        if (this.audioContext) return;
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.gainNode = this.audioContext.createGain();
+        this.gainNode.gain.value = settings.brownNoiseVolume;
+        this.gainNode.connect(this.audioContext.destination);
+        this.createBuffer();
+    }
+
+    createBuffer() {
+        const bufferSize = 5 * this.audioContext.sampleRate; // 5 seconds
+        this.buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+        const output = this.buffer.getChannelData(0);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            output[i] = (lastOut + (0.02 * white)) / 1.02;
+            lastOut = output[i];
+            output[i] *= 3.5; // volume compensation
+        }
+    }
+
+    start() {
+        if (!settings.brownNoise || this.isPlaying) return;
+        this.init();
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+        this.source = this.audioContext.createBufferSource();
+        this.source.buffer = this.buffer;
+        this.source.loop = true;
+        this.source.connect(this.gainNode);
+        this.source.start();
+        this.isPlaying = true;
+    }
+
+    stop() {
+        if (this.source && this.isPlaying) {
+            this.source.stop();
+            this.isPlaying = false;
+        }
+    }
+
+    setVolume(volume) {
+        if (this.gainNode) {
+            this.gainNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.1);
+        }
+    }
+}
+
+const brownNoiseManager = new BrownNoiseManager();
 
 // Initialize
 function init() {
@@ -112,6 +177,26 @@ function init() {
         });
     }
 
+    if (brownNoiseToggleInput) {
+        brownNoiseToggleInput.addEventListener('change', () => {
+            settings.brownNoise = brownNoiseToggleInput.checked;
+            saveData();
+            if (settings.brownNoise) {
+                brownNoiseManager.start();
+            } else {
+                brownNoiseManager.stop();
+            }
+        });
+    }
+
+    if (brownNoiseVolumeInput) {
+        brownNoiseVolumeInput.addEventListener('input', () => {
+            settings.brownNoiseVolume = parseFloat(brownNoiseVolumeInput.value);
+            brownNoiseManager.setVolume(settings.brownNoiseVolume);
+            saveData();
+        });
+    }
+
     if (clearLogBtn) clearLogBtn.addEventListener('click', clearLogs);
     if (downloadLogBtn) downloadLogBtn.addEventListener('click', downloadCSV);
 
@@ -160,6 +245,8 @@ function loadData() {
             if (isNaN(settings.longBreakInterval)) settings.longBreakInterval = 4;
             if (settings.autoStart === undefined) settings.autoStart = true;
             if (settings.notificationSound === undefined) settings.notificationSound = true;
+            settings.brownNoise = false; // Always OFF on reload
+            if (settings.brownNoiseVolume === undefined) settings.brownNoiseVolume = 0.5;
         }
     } catch (e) {
         console.error('Error parsing settings:', e);
@@ -192,6 +279,8 @@ function updateInputFields() {
     if (longBreakIntervalInput) longBreakIntervalInput.value = settings.longBreakInterval;
     if (autoStartInput) autoStartInput.checked = settings.autoStart;
     if (notificationSoundInput) notificationSoundInput.checked = settings.notificationSound;
+    if (brownNoiseToggleInput) brownNoiseToggleInput.checked = settings.brownNoise;
+    if (brownNoiseVolumeInput) brownNoiseVolumeInput.value = settings.brownNoiseVolume;
 }
 
 function saveData() {
