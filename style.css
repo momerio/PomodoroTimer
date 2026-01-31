@@ -140,6 +140,11 @@ button {
     font-family: inherit;
 }
 
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .primary-btn {
     background-color: var(--text-color);
     color: var(--bg-color);

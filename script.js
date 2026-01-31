@@ -38,6 +38,7 @@ let currentMode = 'work'; // 'work', 'shortBreak', 'longBreak'
 let timeLeft = 25 * 60;
 let timerInterval = null;
 let cycleCount = 0;
+let sessionInitialTime = 25 * 60; // 追加: セッション開始時の残り時間
 
 let settings = {
     work: 25 * 60,
@@ -325,6 +326,7 @@ function startTimer() {
     timerState = 'running';
     startPauseBtn.textContent = '一時停止';
     startPauseBtn.classList.add('active');
+    resetBtn.disabled = true;
 
     timerInterval = setInterval(() => {
         timeLeft--;
@@ -340,10 +342,22 @@ function pauseTimer() {
     timerState = 'paused';
     startPauseBtn.textContent = '再開';
     startPauseBtn.classList.remove('active');
+    resetBtn.disabled = false;
     clearInterval(timerInterval);
 }
 
 function resetTimer() {
+    if (timerState === 'paused') {
+        const elapsed = sessionInitialTime - timeLeft;
+        if (elapsed > 0) {
+            let taskName = null;
+            if (currentMode === 'shortBreak') taskName = '小休憩';
+            else if (currentMode === 'longBreak') taskName = '大休憩';
+
+            logSession(currentMode === 'work' ? '作業' : '休憩', taskName, elapsed);
+        }
+    }
+
     pauseTimer();
     timerState = 'stopped';
     startPauseBtn.textContent = '開始';
@@ -352,6 +366,7 @@ function resetTimer() {
     else if (currentMode === 'shortBreak') timeLeft = settings.shortBreak;
     else if (currentMode === 'longBreak') timeLeft = settings.longBreak;
 
+    sessionInitialTime = timeLeft; // リセット時の時間を保持
     updateDisplay();
 }
 
@@ -378,7 +393,7 @@ function handleTimerComplete() {
         showNotification('作業時間が終了しました！');
         cycleCount++;
         cycleCountDisplay.textContent = cycleCount;
-        logSession('作業');
+        logSession('作業', null, sessionInitialTime - timeLeft);
 
         if (cycleCount % settings.longBreakInterval === 0) {
             switchMode('longBreak');
@@ -388,7 +403,7 @@ function handleTimerComplete() {
     } else {
         showNotification('休憩時間が終了しました！');
         const breakName = currentMode === 'shortBreak' ? '小休憩' : '大休憩';
-        logSession('休憩', breakName);
+        logSession('休憩', breakName, sessionInitialTime - timeLeft);
         switchMode('work');
     }
 
@@ -445,14 +460,17 @@ function updateDisplay() {
     document.title = `${timerDisplay.textContent} - Pomodoro Timer`;
 }
 
-function logSession(genre, taskNameOverride = null) {
+function logSession(genre, taskNameOverride = null, elapsedSeconds = null) {
     let taskName = taskNameOverride;
     if (!taskName) {
         taskName = taskInput.value.trim() || '名無しのタスク';
     }
 
     let durationMin, durationSec;
-    if (genre === '作業') {
+    if (elapsedSeconds !== null) {
+        durationMin = Math.floor(elapsedSeconds / 60);
+        durationSec = elapsedSeconds % 60;
+    } else if (genre === '作業') {
         durationMin = Math.floor(settings.work / 60);
         durationSec = settings.work % 60;
     } else {
@@ -677,6 +695,7 @@ function makeTimerEditable() {
         if (input.parentNode) {
             input.replaceWith(timerDisplay);
         }
+        sessionInitialTime = timeLeft; // 編集後の時間を初期時間として設定
         updateDisplay();
     };
 
