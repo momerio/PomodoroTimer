@@ -509,6 +509,7 @@ function renderLogs() {
         taskSpan.addEventListener('dblclick', () => makeLogTaskEditable(index, taskSpan));
 
         const metaSpan = document.createElement('span');
+        metaSpan.className = 'log-meta';
 
         const durSpan = document.createElement('span');
         durSpan.textContent = log.duration;
@@ -522,11 +523,30 @@ function renderLogs() {
         metaSpan.appendChild(durSpan);
         metaSpan.appendChild(timeSpan);
 
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.className = 'delete-log-btn';
+        deleteBtn.title = 'このログを削除';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteLog(index);
+        };
+
         li.appendChild(taskSpan);
         li.appendChild(metaSpan);
+        li.appendChild(deleteBtn);
 
         logList.appendChild(li);
     });
+}
+
+function deleteLog(index) {
+    const logTask = logs[index].task;
+    if (confirm(`"${logTask}"を削除しますか？`)) {
+        logs.splice(index, 1);
+        saveData();
+        renderLogs();
+    }
 }
 
 function makeLogTaskEditable(index, element) {

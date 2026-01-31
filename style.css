@@ -290,18 +290,39 @@ button:disabled {
 .log-item {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding: 8px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     font-size: 0.9rem;
+    gap: 10px;
 }
 
 .log-item span:first-child {
     font-weight: 500;
+    flex: 1;
 }
 
-.log-item span:last-child {
+.log-item .log-meta {
     opacity: 0.6;
     font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.delete-log-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    opacity: 0.2;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0 5px;
+    line-height: 1;
+    transition: var(--transition);
+}
+
+.delete-log-btn:hover {
+    opacity: 0.6;
+    color: #e53e3e;
 }
 
 /* Log Controls */
