@@ -327,6 +327,7 @@ function startTimer() {
     startPauseBtn.textContent = '一時停止';
     startPauseBtn.classList.add('active');
     resetBtn.disabled = true;
+    updateUIStates();
 
     timerInterval = setInterval(() => {
         timeLeft--;
@@ -343,6 +344,7 @@ function pauseTimer() {
     startPauseBtn.textContent = '再開';
     startPauseBtn.classList.remove('active');
     resetBtn.disabled = false;
+    updateUIStates();
     clearInterval(timerInterval);
 }
 
@@ -368,9 +370,15 @@ function resetTimer() {
 
     sessionInitialTime = timeLeft; // リセット時の時間を保持
     updateDisplay();
+    updateUIStates();
 }
 
 function switchMode(mode) {
+    if (timerState !== 'stopped') {
+        showNotification('タイマーを停止してから切り替えてください。', false);
+        return;
+    }
+
     currentMode = mode;
 
     modeButtons.forEach(btn => {
@@ -386,15 +394,34 @@ function switchMode(mode) {
     resetTimer();
 }
 
+function updateUIStates() {
+    const isRunning = timerState !== 'stopped';
+    modeButtons.forEach(btn => {
+        if (isRunning) {
+            btn.classList.add('disabled');
+            btn.title = '切り替えにはタイマーをリセットしてください';
+        } else {
+            btn.classList.remove('disabled');
+            btn.title = '';
+        }
+    });
+}
+
 function handleTimerComplete() {
     pauseTimer();
+    const completedMode = currentMode;
+    const completedInitialTime = sessionInitialTime;
+    const completedTimeLeft = timeLeft;
 
-    if (currentMode === 'work') {
+    // ログを保存してから switchMode を呼ぶ
+    if (completedMode === 'work') {
         showNotification('作業時間が終了しました！');
         cycleCount++;
         cycleCountDisplay.textContent = cycleCount;
-        logSession('作業', null, sessionInitialTime - timeLeft);
+        logSession('作業', null, completedInitialTime - completedTimeLeft);
 
+        // switchMode 内での制限を回避するために一時的に stopped にする
+        timerState = 'stopped';
         if (cycleCount % settings.longBreakInterval === 0) {
             switchMode('longBreak');
         } else {
@@ -402,8 +429,10 @@ function handleTimerComplete() {
         }
     } else {
         showNotification('休憩時間が終了しました！');
-        const breakName = currentMode === 'shortBreak' ? '小休憩' : '大休憩';
-        logSession('休憩', breakName, sessionInitialTime - timeLeft);
+        const breakName = completedMode === 'shortBreak' ? '小休憩' : '大休憩';
+        logSession('休憩', breakName, completedInitialTime - completedTimeLeft);
+
+        timerState = 'stopped';
         switchMode('work');
     }
 
@@ -414,12 +443,12 @@ function handleTimerComplete() {
     }
 }
 
-function showNotification(message) {
+function showNotification(message, playSound = true) {
     if (notificationMessage) notificationMessage.textContent = message;
     if (notificationToast) {
         notificationToast.classList.remove('hidden', 'fade-out');
 
-        if (settings.notificationSound) {
+        if (settings.notificationSound && playSound) {
             playNotificationSound();
         }
 
